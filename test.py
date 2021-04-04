@@ -1,8 +1,13 @@
-from torchvision.datasets import ImageFolder
-from torchvision import transforms
+from utils import BlobData
+from models import CNN
 from pathlib import Path
-from PIL import Image
 
 path = Path().absolute()
-data = ImageFolder(path, transform=transforms.ToTensor())
-print(data[0:1])
+
+train = BlobData(path / 'data' / 'train')
+x, y = train[10]
+
+x = x.unsqueeze(0)
+
+model = CNN(train.n_class)
+print(model(x))

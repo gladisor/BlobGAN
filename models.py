@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 class CNN(nn.Module):
     def __init__(self, n_class):
         super().__init__()
-        self.img_size = 32
+        self.img_size = 128
         self.in_c = 1
         self.hidden_c = 16
         self.kernel_size = 2
@@ -14,12 +14,19 @@ class CNN(nn.Module):
             nn.Conv2d(self.in_c, self.hidden_c, self.kernel_size),
             nn.MaxPool2d(self.kernel_size),
             nn.ReLU(),
-            nn.Conv2d(self.hidden_c, self.hidden_c, self.kernel_size),
-            nn.MaxPool2d(self.kernel_size),
-            nn.ReLU(),
+            *self.block(4),
             nn.Flatten())
 
-        self.fc = nn.Linear(576, n_class)
+        self.fc = nn.Linear(144, n_class)
+
+    def block(self, n_layers):
+        layers = []
+        for _ in range(n_layers):
+            layers += [
+                nn.Conv2d(self.hidden_c, self.hidden_c, self.kernel_size),
+                nn.MaxPool2d(self.kernel_size),
+                nn.ReLU()]
+        return layers
 
     def forward(self, x):
         # in lightning, forward defines the prediction/inference actions
@@ -66,5 +73,5 @@ class Classifier(pl.LightningModule):
         return {'loss': loss, 'progress_bar': {'acc': acc}}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer

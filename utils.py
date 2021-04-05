@@ -129,7 +129,10 @@ class BlobData(torch.utils.data.Dataset):
         self.x, self.y = zip(*xy)
 
         ## Creating transform for image
-        self.transform = transforms.ToTensor()
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5), std=(0.5)) ## Scales between -1 and 1
+            ])
 
     def __getitem__(self, idx):
         im = self.transform(Image.open(self.x[idx]))
@@ -139,7 +142,7 @@ class BlobData(torch.utils.data.Dataset):
         return len(self.x)
 
 if __name__ == '__main__':
-    blob_numbers = list(range(5, 10))
+    blob_numbers = list(range(1, 10))
 
     ## Training dataset
     build_dataset(

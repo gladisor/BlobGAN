@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from mpl_toolkits import mplot3d
 
-
-
+## https://github.com/Severian-desu-ga/Blob-Maker/blob/master/Blob_Maker.py
 def mk_blob(**kwargs):
     '''Makes a blob by generating a circle/sphere with a variable radius based
        on a set distribution function and applying Gaussian filter to smooth
@@ -52,7 +51,7 @@ def mk_blob(**kwargs):
     if ((dist == 'wald') or (dist == 'vonmises')) & (scale == 0):
         scale = 100
     elif scale == 0:
-        scale = 0.15 
+        scale = 0.15
 
     if dim=='3d':
 
@@ -79,7 +78,7 @@ def mk_blob(**kwargs):
             r = np.random.vonmises(val, scale, size=[size,size])
         else:
             r = np.random.normal(val, scale, size=[size,size])
-        
+
         old_size = size
         size = complex(0, size)
         theta, phi = np.mgrid[0:2*np.pi:size, 0:np.pi:size]
@@ -134,7 +133,7 @@ def mk_blob(**kwargs):
             r = np.random.vonmises(val, scale, size=size)
         else:
             r = np.random.normal(val, scale, size=size)
-          
+
         theta = np.linspace(np.pi/2, 5*np.pi/2, size)
 
         x = r*np.cos(theta)
@@ -147,7 +146,7 @@ def mk_blob(**kwargs):
         y = gaussian_filter(y, sigma=sigma)
         x[size] = x[0]
         y[size] = y[0]
-    
+
     if plot:
 
         if dim=='3d':
@@ -160,7 +159,7 @@ def mk_blob(**kwargs):
             ax = fig.add_subplot(111)
             ax.plot(x,y)
             plt.show()
-            
+
     if dim=='3d':
         return x,y,z
     else:

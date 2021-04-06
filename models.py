@@ -19,7 +19,8 @@ class Generator(nn.Module):
         self.out_channels = out_channels
 
         ## Static archetecture parameters
-        self.h_dims = [16, 8, 4, 2, 1]
+        # self.h_dims = [16, 8, 4, 2, 1]
+        self.h_dims = [8, 4, 2, 1]
         self.h_dims = [x * h_channels for x in self.h_dims]
         ## Setting conv parameters
         self.kernel = 4
@@ -69,7 +70,8 @@ class Discriminator(nn.Module):
         self.h_channels = h_channels
 
         ## Static archetecture parameters
-        self.h_dims = [1, 2, 4, 8, 16]
+        # self.h_dims = [1, 2, 4, 8, 16]
+        self.h_dims = [1, 2, 4, 8]
         self.h_dims = [x * h_channels for x in self.h_dims]
         ## Setting conv parameters
         self.kernel = 4
@@ -104,7 +106,8 @@ class Discriminator(nn.Module):
             nn.Conv2d(
                 self.h_dims[-1], 1,
                 self.kernel, bias=False),
-            nn.Sigmoid()]
+            nn.Sigmoid()
+            ]
 
         return nn.Sequential(*layers)
 
@@ -116,6 +119,7 @@ class Discriminator(nn.Module):
 class DCGAN(pl.LightningModule):
     def __init__(self, z_channels: int, h_channels: int, img_channels: int, lr: float):
         super().__init__()
+        self.save_hyperparameters()
         ## Hyperparams
         self.z_channels = z_channels
         self.h_channels = h_channels
@@ -135,6 +139,7 @@ class DCGAN(pl.LightningModule):
 
         ## Loss function
         self.criterion = nn.BCELoss()
+        # self.criterion = nn.BCEWithLogitsLoss()
 
         ## Turning off automatic optimization
         self.automatic_optimization = False
@@ -268,9 +273,6 @@ class Classifier(pl.LightningModule):
 
         self.log('train_loss', loss)
         self.log('train_acc', acc)
-
-        if batch_idx % 1000 == 0:
-            self.logger.experiment.log({"examples": [wandb.Image(trans(x[0]), caption="Label")]})
         return loss
 
     def validation_step(self, batch, batch_idx):

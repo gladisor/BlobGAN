@@ -13,7 +13,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 if __name__ == '__main__':
     path = Path().resolve()
-    train_path = path / 'data' / 'train'
+    train_path = path / 'data' / 'rgb' / 'train'
     # test_path = path / 'data' / 'test'
 
     train = BlobData(train_path)
@@ -30,14 +30,14 @@ if __name__ == '__main__':
 
     trainer = pl.Trainer(
         gpus=1,
-        max_epochs=3,
-        logger=WandbLogger(project='BlobGAN'),
+        max_epochs=10,
+        logger=WandbLogger(project='BlobGAN', name='RGB'),
         log_every_n_steps=1
         )
 
     dcgan = DCGAN(
-        z_channels=100, h_channels=32,
-        img_channels=1, lr=0.0002)
+        z_channels=100, h_channels=64,
+        img_channels=3, lr=0.0002)
 
     # trainer.fit(classifier, train, test)
     trainer.fit(dcgan, train)

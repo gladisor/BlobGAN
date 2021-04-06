@@ -29,6 +29,7 @@ def generate_centers(num_centers: int, grid_size: float) -> np.array:
         				valid = False
     return centers
 
+colors = ['#FC0202', '#FC9902', '#F5FC02', '#2DFC02', '#02FCDC', '#022EFC', '#BC02FC']
 def create_blob_image(centers: np.array, grid_size: float, path: str):
     """
     Creates and saves an image with randomly generated blobs at each coordinate location
@@ -37,7 +38,8 @@ def create_blob_image(centers: np.array, grid_size: float, path: str):
     IMAGE_SIZE = 128
     bounds = grid_size + 1
 
-    with Image.new(mode='1', size=(IMAGE_SIZE, IMAGE_SIZE)) as im:
+    # with Image.new(mode='1', size=(IMAGE_SIZE, IMAGE_SIZE)) as im:
+    with Image.new(mode='RGB', size=(IMAGE_SIZE, IMAGE_SIZE)) as im:
 
         draw = ImageDraw.Draw(im)
         for i in range(centers.shape[0]):
@@ -51,7 +53,9 @@ def create_blob_image(centers: np.array, grid_size: float, path: str):
             y = ((y + bounds) / (bounds * 2)) * IMAGE_SIZE
             ## Plotting
             xy = list(zip(x, y))
-            draw.polygon(xy, fill=128)
+            # draw.polygon(xy, fill=128)
+            c = colors[np.random.randint(len(colors))]
+            draw.polygon(xy, fill=c)
         ## Saving
         im.save(path)
 
@@ -130,8 +134,9 @@ class BlobData(torch.utils.data.Dataset):
 
         ## Creating transform for image
         self.transform = transforms.Compose([
+            transforms.Resize(64),
             transforms.ToTensor(),
-            transforms.Normalize(mean=(0.5), std=(0.5)) ## Scales between -1 and 1
+            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)) ## Scales between -1 and 1
             ])
 
     def __getitem__(self, idx):
@@ -146,7 +151,7 @@ if __name__ == '__main__':
 
     ## Training dataset
     build_dataset(
-        images_per_class=10000,
+        images_per_class=100000,
         blob_numbers=blob_numbers,
         train=True)
 

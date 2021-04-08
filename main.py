@@ -1,43 +1,63 @@
 from pathlib import Path
-import torch
 from torch.utils.data import DataLoader
 
 from utils import BlobData
-from models import CNN, Classifier, DCGAN
+from models import DCGAN
 
-import pytorch_lightning as pl
+from pytorch_lightning import Trainer, Callback
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-# from torchvision.transforms import ToPILImage
+## https://github.com/PyTorchLightning/pytorch-lightning/issues/2534
+class CheckpointEveryNSteps(Callback):
+    """
+    Save a checkpoint every N steps, instead of Lightning's default that checkpoints
+    based on validation loss.
+    """
+    def __init__(self, save_every: int):
+        self.save_every = save_every
+
+    def on_batch_end(self, trainer: Trainer, _):
+        """ Check if we should save a checkpoint after every train batch """
+        epoch = trainer.current_epoch
+        global_step = trainer.global_step
+        if global_step % self.save_every == 0:
+            filename = f'{epoch=}_{global_step=}.ckpt'
+            ckpt_path = Path(trainer.checkpoint_callback.dirpath, filename)
+            trainer.save_checkpoint(ckpt_path)
 
 if __name__ == '__main__':
     path = Path().resolve()
-    train_path = path / 'data' / 'rgb' / 'train'
-    # test_path = path / 'data' / 'test'
+    train_path = path / 'data' / 'train'
 
     train = BlobData(train_path)
-    # test = BlobData(test_path)
-
-    # model = CNN(train.n_class)
-    # classifier = Classifier(
-    #     model=model,
-    #     lr=1e-3)
+    print(f'Number of training examples is {len(train)}')
 
     batch_size = 128
-    train = DataLoader(train, batch_size=batch_size, num_workers=4, shuffle=True)
-    # test = DataLoader(test, batch_size=batch_size, num_workers=1)
+    train = DataLoader(
+        train, batch_size=batch_size,
+        num_workers=4, shuffle=True)
 
-    trainer = pl.Trainer(
-        gpus=1,
-        max_epochs=10,
-        logger=WandbLogger(project='BlobGAN', name='RGB'),
-        log_every_n_steps=1
-        )
-
+    ## h_channels default = 64
+    z_channels = 100
+    h_channels = 64
+    img_channels = 3
+    lr = 0.0002
     dcgan = DCGAN(
-        z_channels=100, h_channels=64,
-        img_channels=3, lr=0.0002)
+        z_channels=z_channels, h_channels=h_channels,
+        img_channels=img_channels, lr=lr,
+        save_every=200)
 
-    # trainer.fit(classifier, train, test)
+    logger = WandbLogger(
+        project='BlobGAN',
+        name=f'img={img_channels}-h={h_channels}-z={z_channels}-lr={lr}',
+        log_model=False)
+    callback = CheckpointEveryNSteps(dcgan.save_every)
+    trainer = Trainer(
+        gpus=1,
+        max_epochs=2,
+        logger=logger,
+        log_every_n_steps=1,
+        callbacks=[callback])
+
     trainer.fit(dcgan, train)

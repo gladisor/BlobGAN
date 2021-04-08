@@ -151,7 +151,7 @@ if __name__ == '__main__':
 
     ## Training dataset
     build_dataset(
-        images_per_class=100000,
+        images_per_class=150000,
         blob_numbers=blob_numbers,
         train=True)
 

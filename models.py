@@ -106,7 +106,7 @@ class Discriminator(nn.Module):
             nn.Conv2d(
                 self.h_dims[-1], 1,
                 self.kernel, bias=False),
-            nn.Sigmoid()
+            # nn.Sigmoid()
             ]
 
         return nn.Sequential(*layers)
@@ -117,17 +117,20 @@ class Discriminator(nn.Module):
 
 ## https://pytorch-lightning.readthedocs.io/en/latest/common/optimizers.html
 class DCGAN(pl.LightningModule):
-    def __init__(self, z_channels: int, h_channels: int, img_channels: int, lr: float):
+    def __init__(self,
+            z_channels: int, h_channels: int,
+            img_channels: int, lr: float,
+            save_every: int = 100):
         super().__init__()
         self.save_hyperparameters()
         ## Hyperparams
         self.z_channels = z_channels
         self.h_channels = h_channels
         self.img_channels = img_channels
-
         self.lr = lr
         self.beta1 = 0.5
         self.beta2 = 0.999
+        self.save_every = save_every
 
         ## Generator
         self.G = Generator(z_channels, h_channels, img_channels)
@@ -138,8 +141,9 @@ class DCGAN(pl.LightningModule):
         self.D.apply(self.weights_init)
 
         ## Loss function
-        self.criterion = nn.BCELoss()
-        # self.criterion = nn.BCEWithLogitsLoss()
+        # self.criterion = nn.BCELoss()
+        self.criterion = nn.BCEWithLogitsLoss()
+        # self.criterion = nn.MSELoss()
 
         ## Turning off automatic optimization
         self.automatic_optimization = False
@@ -207,7 +211,7 @@ class DCGAN(pl.LightningModule):
 
         self.log_dict({'d_loss': d_loss, 'g_loss': g_loss}, prog_bar=True)
 
-        if batch_idx % 50 == 0:
+        if batch_idx % self.save_every == 0:
             imgs = self.get_images()
             imgs = [wandb.Image(img) for img in imgs]
             self.logger.experiment.log({'generated_images': imgs})

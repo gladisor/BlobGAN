@@ -103,10 +103,7 @@ class Discriminator(nn.Module):
 
         ## Output layer
         layers += [
-            nn.Conv2d(
-                self.h_dims[-1], 1,
-                self.kernel, bias=False),
-            # nn.Sigmoid()
+            nn.Conv2d(self.h_dims[-1], 1, self.kernel, bias=False)
             ]
 
         return nn.Sequential(*layers)
@@ -114,6 +111,9 @@ class Discriminator(nn.Module):
     def forward(self, x):
         probs = self.layers(x).squeeze()
         return probs
+
+    def get_features(self, x):
+        return self.layers[:-3](x)
 
 ## https://pytorch-lightning.readthedocs.io/en/latest/common/optimizers.html
 class DCGAN(pl.LightningModule):
@@ -141,9 +141,9 @@ class DCGAN(pl.LightningModule):
         self.D.apply(self.weights_init)
 
         ## Loss function
-        # self.criterion = nn.BCELoss()
         self.criterion = nn.BCEWithLogitsLoss()
         # self.criterion = nn.MSELoss()
+        self.sigmoid = nn.Sigmoid()
 
         ## Turning off automatic optimization
         self.automatic_optimization = False
@@ -153,6 +153,9 @@ class DCGAN(pl.LightningModule):
 
         ## Latent vectors for testing
         self.latents = self.get_noise(9)
+
+    def forward(self, x):
+        return self.G(x)
 
     ## https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
     def weights_init(self, m):
@@ -190,27 +193,41 @@ class DCGAN(pl.LightningModule):
         ## Training discriminator
         d_opt.zero_grad()
 
+        ## Calculating loss on real images
         real_x_preds = self.D(real_x)
         real_loss = self.criterion(real_x_preds, real_label)
 
+        ## Calculating loss on fake images
         fake_x_preds = self.D(fake_x.detach())
         fake_loss = self.criterion(fake_x_preds, fake_label)
 
+        ## Summing loss and stepping optimizer
         d_loss = (real_loss + fake_loss)
         self.manual_backward(d_loss)
         d_opt.step()
 
+        ## Calculating accuracy of discriminator
+        real_acc = accuracy(self.sigmoid(real_x_preds), real_label.int())
+        fake_acc = accuracy(self.sigmoid(fake_x_preds), fake_label.int())
+
         ## Training generator
         g_opt.zero_grad()
 
+        ## Calculating generator loss
         fake_x_preds = self.D(fake_x)
-
         g_loss = self.criterion(fake_x_preds, real_label)
+        # g_loss = -fake_x_preds.mean() ## Loss function which supposedly prevents sigmoid saturation
+
+        ## Stepping optimizer
         self.manual_backward(g_loss)
         g_opt.step()
 
-        self.log_dict({'d_loss': d_loss, 'g_loss': g_loss}, prog_bar=True)
+        ## Logging stats
+        self.log_dict(
+            {'d_loss': d_loss, 'g_loss': g_loss, 'real_acc': real_acc, 'fake_acc': fake_acc},
+            prog_bar=True)
 
+        ## Logging images
         if batch_idx % self.save_every == 0:
             imgs = self.get_images()
             imgs = [wandb.Image(img) for img in imgs]

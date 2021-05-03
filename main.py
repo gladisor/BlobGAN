@@ -27,31 +27,40 @@ class CheckpointEveryNSteps(Callback):
             trainer.save_checkpoint(ckpt_path)
 
 if __name__ == '__main__':
+    mode = '1' ## ['1', 'RGB']
+
     path = Path().resolve()
-    train_path = path / 'data' / 'train'
+    train_path = path / 'data' / mode / 'train'
 
-    train = BlobData(train_path)
-    print(f'Number of training examples is {len(train)}')
+    mode_channels = {'1':1, 'RGB':3}
 
-    batch_size = 128
-    train = DataLoader(
-        train, batch_size=batch_size,
-        num_workers=4, shuffle=True)
-
-    ## h_channels default = 64
     z_channels = 100
     h_channels = 64
-    img_channels = 3
+    img_channels = mode_channels[mode]
     lr = 0.0002
+    batch_size = 256
+
+    ## Defining model
     dcgan = DCGAN(
         z_channels=z_channels, h_channels=h_channels,
         img_channels=img_channels, lr=lr,
         save_every=200)
 
+    ## Creating dataset object
+    train = BlobData(train_path, img_channels)
+    print(f'Number of training examples is {len(train)}')
+
+    train = DataLoader(
+        train, batch_size=batch_size,
+        num_workers=4, shuffle=True)
+
+    ## Making logger for tracking stats on wandb.com
     logger = WandbLogger(
         project='BlobGAN',
-        name=f'img={img_channels}-h={h_channels}-z={z_channels}-lr={lr}',
+        name=f'img={img_channels}-h={h_channels}-z={z_channels}-lr={lr}-batch={batch_size}',
         log_model=False)
+
+    ## Creating trainer object
     callback = CheckpointEveryNSteps(dcgan.save_every)
     trainer = Trainer(
         gpus=1,
@@ -60,4 +69,5 @@ if __name__ == '__main__':
         log_every_n_steps=1,
         callbacks=[callback])
 
+    ## Fitting model
     trainer.fit(dcgan, train)

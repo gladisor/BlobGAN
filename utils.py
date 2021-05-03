@@ -30,16 +30,17 @@ def generate_centers(num_centers: int, grid_size: float) -> np.array:
     return centers
 
 colors = ['#FC0202', '#FC9902', '#F5FC02', '#2DFC02', '#02FCDC', '#022EFC', '#BC02FC']
-def create_blob_image(centers: np.array, grid_size: float, path: str):
+def create_blob_image(centers: np.array, grid_size: float, path: str, mode: str):
     """
     Creates and saves an image with randomly generated blobs at each coordinate location
     for the center specified in the centers parameter.
     """
+
     IMAGE_SIZE = 128
     bounds = grid_size + 1
 
     # with Image.new(mode='1', size=(IMAGE_SIZE, IMAGE_SIZE)) as im:
-    with Image.new(mode='RGB', size=(IMAGE_SIZE, IMAGE_SIZE)) as im:
+    with Image.new(mode=mode, size=(IMAGE_SIZE, IMAGE_SIZE)) as im:
 
         draw = ImageDraw.Draw(im)
         for i in range(centers.shape[0]):
@@ -54,12 +55,15 @@ def create_blob_image(centers: np.array, grid_size: float, path: str):
             ## Plotting
             xy = list(zip(x, y))
             # draw.polygon(xy, fill=128)
-            c = colors[np.random.randint(len(colors))]
+            if mode == '1':
+                c = 128
+            elif mode == 'RGB':
+                c = colors[np.random.randint(len(colors))]
             draw.polygon(xy, fill=c)
         ## Saving
         im.save(path)
 
-def build_dataset(images_per_class: int, blob_numbers: list, train: bool = True):
+def build_dataset(images_per_class: int, blob_numbers: list, train: bool = True, mode: str = 'RGB'):
     """
     Creates the dataset of evently balanced classes. Each class is a number of blobs.
     Parallelizes the image generation across all cpu workers. If train = True, builds
@@ -67,14 +71,14 @@ def build_dataset(images_per_class: int, blob_numbers: list, train: bool = True)
     """
     ## Make data folder if not exist
     path = Path().absolute()
-    data_path = path / 'data'
+    data_path = path / 'data' / mode
     ## Specify train or test
     if train:
         data_path = data_path / 'train'
     else:
         data_path = data_path / 'test'
 
-    os.makedirs(data_path, exist_ok=True)
+    os.makedirs(data_path, exist_ok=False)
 
     num_workers = mp.cpu_count() - 1
     grid_size = 2.5 ## Grid size in which to place blobs
@@ -91,13 +95,14 @@ def build_dataset(images_per_class: int, blob_numbers: list, train: bool = True)
         num_centers = np.full(shape=images_per_class, fill_value=num_centers, dtype=np.int)
         grid_size = np.full(shape=images_per_class, fill_value=grid_size, dtype=np.float)
         file_names = [blob_path / (str(i) + '.png') for i in range(images_per_class)]
+        modes = [mode] * images_per_class
 
         ## Paralell pool of workers
         with Pool(num_workers) as p:
             ## Generate centers for blobs
             centers = p.starmap(generate_centers, zip(num_centers, grid_size))
             ## Create images with specified number of blobs
-            p.starmap(create_blob_image, zip(centers, grid_size, file_names))
+            p.starmap(create_blob_image, zip(centers, grid_size, file_names, modes))
 
         ## Report time for generating
         elapse = time.time() - start
@@ -107,7 +112,7 @@ class BlobData(torch.utils.data.Dataset):
     """
     Custom dataset for blob images.
     """
-    def __init__(self, path):
+    def __init__(self, path, num_channels):
         super().__init__()
         x = []
         y = []
@@ -136,7 +141,7 @@ class BlobData(torch.utils.data.Dataset):
         self.transform = transforms.Compose([
             transforms.Resize(64),
             transforms.ToTensor(),
-            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)) ## Scales between -1 and 1
+            transforms.Normalize(mean=[0.5] * num_channels, std=[0.5] * num_channels) ## Scales between -1 and 1
             ])
 
     def __getitem__(self, idx):
@@ -153,10 +158,12 @@ if __name__ == '__main__':
     build_dataset(
         images_per_class=150000,
         blob_numbers=blob_numbers,
-        train=True)
+        train=True,
+        mode='1')
 
     ## Testing dataset
     build_dataset(
         images_per_class=1000,
         blob_numbers=blob_numbers,
-        train=False)
+        train=False,
+        mode='1')
